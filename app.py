@@ -15,7 +15,6 @@ from src.config.crop_config import CropConfig
 from src.config.argument_config import ArgumentConfig
 from src.config.inference_config import InferenceConfig
 
-
 def partial_fields(target_class, kwargs):
     return target_class(**{k: v for k, v in kwargs.items() if hasattr(target_class, k)})
 
@@ -108,11 +107,9 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                         source_image_input = gr.Image(type="filepath")
                         gr.Examples(
                             examples=[
-                                [osp.join(example_portrait_dir, "s9.jpg")],
                                 [osp.join(example_portrait_dir, "s6.jpg")],
                                 [osp.join(example_portrait_dir, "s10.jpg")],
                                 [osp.join(example_portrait_dir, "s5.jpg")],
-                                [osp.join(example_portrait_dir, "s7.jpg")],
                                 [osp.join(example_portrait_dir, "s12.jpg")],
                                 [osp.join(example_portrait_dir, "s22.jpg")],
                                 [osp.join(example_portrait_dir, "s23.jpg")],
@@ -121,7 +118,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                             cache_examples=False,
                         )
 
-                with gr.TabItem("🎞️ Source Video") as tab_video:
+                with gr.TabItem("🎞️ Source Video", visible=False) as tab_video:
                     with gr.Accordion(open=True, label="Source Video"):
                         source_video_input = gr.Video()
                         gr.Examples(
@@ -140,38 +137,55 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                 tab_selection = gr.Textbox(visible=False)
                 tab_image.select(lambda: "Image", None, tab_selection)
                 tab_video.select(lambda: "Video", None, tab_selection)
-            with gr.Accordion(open=True, label="Cropping Options for Source Image or Video"):
+            with gr.Accordion(open=True, label="Cropping Options for Source Image or Video", visible=False):
                 with gr.Row():
                     flag_do_crop_input = gr.Checkbox(value=True, label="do crop (source)")
                     scale = gr.Number(value=2.3, label="source crop scale", minimum=1.8, maximum=3.2, step=0.05)
                     vx_ratio = gr.Number(value=0.0, label="source crop x", minimum=-0.5, maximum=0.5, step=0.01)
                     vy_ratio = gr.Number(value=-0.125, label="source crop y", minimum=-0.5, maximum=0.5, step=0.01)
-
         with gr.Column():
-            with gr.Accordion(open=True, label="Driving Video"):
-                driving_video_input = gr.Video()
-                gr.Examples(
-                    examples=[
-                        [osp.join(example_video_dir, "d0.mp4")],
-                        [osp.join(example_video_dir, "d18.mp4")],
-                        [osp.join(example_video_dir, "d19.mp4")],
-                        [osp.join(example_video_dir, "d14.mp4")],
-                        [osp.join(example_video_dir, "d6.mp4")],
-                        [osp.join(example_video_dir, "d20.mp4")],
-                    ],
-                    inputs=[driving_video_input],
-                    cache_examples=False,
+            with gr.Row():
+                action_selection = gr.Radio(
+                    choices=[
+                        ("미소", osp.join(example_video_dir, "smile.webm")),
+                        ("당황", osp.join(example_video_dir, "surprised.webm")),
+                        ("끄덕끄덕", osp.join(example_video_dir, "gdgd.webm")),
+                        ("절레절레", osp.join(example_video_dir, "nopeshaking.webm"))],
+                    label="Select Emotion"
                 )
-            # with gr.Accordion(open=False, label="Animation Instructions"):
-                # gr.Markdown(load_description("assets/gradio/gradio_description_animation.md"))
-            with gr.Accordion(open=True, label="Cropping Options for Driving Video"):
-                with gr.Row():
-                    flag_crop_driving_video_input = gr.Checkbox(value=False, label="do crop (driving)")
-                    scale_crop_driving_video = gr.Number(value=2.2, label="driving crop scale", minimum=1.8, maximum=3.2, step=0.05)
-                    vx_ratio_crop_driving_video = gr.Number(value=0.0, label="driving crop x", minimum=-0.5, maximum=0.5, step=0.01)
-                    vy_ratio_crop_driving_video = gr.Number(value=-0.1, label="driving crop y", minimum=-0.5, maximum=0.5, step=0.01)
+
+            with gr.Row():
+                process_button_animation = gr.Button("🚀 Animate", variant="primary")
+            with gr.Row():
+                with gr.Accordion(open=True, label="The animated video in the original image space"):
+                    output_video_i2v.render()
+
 
     with gr.Row():
+        with gr.Accordion(open=True, label="Driving Video", visible=False):
+            driving_video_input = gr.Video()
+            gr.Examples(
+                examples=[
+                    [osp.join(example_video_dir, "d0.mp4")],
+                    [osp.join(example_video_dir, "d18.mp4")],
+                    [osp.join(example_video_dir, "d19.mp4")],
+                    [osp.join(example_video_dir, "d14.mp4")],
+                    [osp.join(example_video_dir, "d6.mp4")],
+                    [osp.join(example_video_dir, "d20.mp4")],
+                ],
+                inputs=[driving_video_input],
+                cache_examples=False,
+            )
+        with gr.Accordion(open=False, label="Animation Instructions", visible=False):
+            gr.Markdown(load_description("assets/gradio/gradio_description_animation.md"))
+        with gr.Accordion(open=True, label="Cropping Options for Driving Video", visible=False):
+            with gr.Row():
+                flag_crop_driving_video_input = gr.Checkbox(value=False, label="do crop (driving)")
+                scale_crop_driving_video = gr.Number(value=2.2, label="driving crop scale", minimum=1.8, maximum=3.2, step=0.05)
+                vx_ratio_crop_driving_video = gr.Number(value=0.0, label="driving crop x", minimum=-0.5, maximum=0.5, step=0.01)
+                vy_ratio_crop_driving_video = gr.Number(value=-0.1, label="driving crop y", minimum=-0.5, maximum=0.5, step=0.01)
+
+    with gr.Row(visible=False):
         with gr.Accordion(open=True, label="Animation Options"):
             with gr.Row():
                 flag_relative_input = gr.Checkbox(value=True, label="relative motion")
@@ -181,123 +195,18 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
 
     gr.Markdown(load_description("assets/gradio/gradio_description_animate_clear.md"))
     with gr.Row():
-        process_button_animation = gr.Button("🚀 Animate", variant="primary")
-    with gr.Row():
-        with gr.Column():
-            with gr.Accordion(open=True, label="The animated video in the original image space"):
-                output_video_i2v.render()
-        with gr.Column():
+        with gr.Column(visible=False):
             with gr.Accordion(open=True, label="The animated video"):
                 output_video_concat_i2v.render()
     with gr.Row():
-        process_button_reset = gr.ClearButton([source_image_input, source_video_input, driving_video_input, output_video_i2v, output_video_concat_i2v], value="🧹 Clear")
-
-    with gr.Row():
-        # Examples
-        gr.Markdown("## You could also choose the examples below by one click ⬇️")
-    with gr.Row():
-        with gr.Tabs():
-            with gr.TabItem("🖼️ Portrait Animation"):
-                gr.Examples(
-                    examples=data_examples_i2v,
-                    fn=gpu_wrapped_execute_video,
-                    inputs=[
-                        source_image_input,
-                        driving_video_input,
-                        flag_relative_input,
-                        flag_do_crop_input,
-                        flag_remap_input,
-                        flag_crop_driving_video_input,
-                    ],
-                    outputs=[output_image, output_image_paste_back],
-                    examples_per_page=len(data_examples_i2v),
-                    cache_examples=False,
-                )
-            with gr.TabItem("🎞️ Portrait Video Editing"):
-                gr.Examples(
-                    examples=data_examples_v2v,
-                    fn=gpu_wrapped_execute_video,
-                    inputs=[
-                        source_video_input,
-                        driving_video_input,
-                        flag_relative_input,
-                        flag_do_crop_input,
-                        flag_remap_input,
-                        flag_crop_driving_video_input,
-                        flag_video_editing_head_rotation,
-                        driving_smooth_observation_variance,
-                    ],
-                    outputs=[output_image, output_image_paste_back],
-                    examples_per_page=len(data_examples_v2v),
-                    cache_examples=False,
-                )
-
-    # Retargeting
-    gr.Markdown(load_description("assets/gradio/gradio_description_retargeting.md"), visible=True)
-    with gr.Row(visible=True):
-        retargeting_source_scale.render()
-        eye_retargeting_slider.render()
-        lip_retargeting_slider.render()
-    with gr.Row(visible=True):
-        head_pitch_slider.render()
-        head_yaw_slider.render()
-        head_roll_slider.render()
-    with gr.Row(visible=True):
-        process_button_retargeting = gr.Button("🚗 Retargeting", variant="primary")
-    with gr.Row(visible=True):
-        with gr.Column():
-            with gr.Accordion(open=True, label="Retargeting Input"):
-                retargeting_input_image.render()
-                gr.Examples(
-                    examples=[
-                        [osp.join(example_portrait_dir, "s9.jpg")],
-                        [osp.join(example_portrait_dir, "s6.jpg")],
-                        [osp.join(example_portrait_dir, "s10.jpg")],
-                        [osp.join(example_portrait_dir, "s5.jpg")],
-                        [osp.join(example_portrait_dir, "s7.jpg")],
-                        [osp.join(example_portrait_dir, "s12.jpg")],
-                        [osp.join(example_portrait_dir, "s22.jpg")],
-                        [osp.join(example_portrait_dir, "s23.jpg")],
-                    ],
-                    inputs=[retargeting_input_image],
-                    cache_examples=False,
-                )
-        with gr.Column():
-            with gr.Accordion(open=True, label="Retargeting Result"):
-                output_image.render()
-        with gr.Column():
-            with gr.Accordion(open=True, label="Paste-back Result"):
-                output_image_paste_back.render()
-    with gr.Row(visible=True):
-        process_button_reset_retargeting = gr.ClearButton(
-            [
-                eye_retargeting_slider,
-                lip_retargeting_slider,
-                head_pitch_slider,
-                head_yaw_slider,
-                head_roll_slider,
-                retargeting_input_image,
-                output_image,
-                output_image_paste_back
-            ],
-            value="🧹 Clear"
-        )
-
-    # binding functions for buttons
-    process_button_retargeting.click(
-        # fn=gradio_pipeline.execute_image,
-        fn=gpu_wrapped_execute_image,
-        inputs=[eye_retargeting_slider, lip_retargeting_slider, head_pitch_slider, head_yaw_slider, head_roll_slider, retargeting_input_image, retargeting_source_scale, flag_do_crop_input],
-        outputs=[output_image, output_image_paste_back],
-        show_progress=True
-    )
+        process_button_reset = gr.ClearButton([source_image_input, source_video_input, action_selection, output_video_i2v, output_video_concat_i2v], value="🧹 Clear")
 
     process_button_animation.click(
         fn=gpu_wrapped_execute_video,
         inputs=[
             source_image_input,
             source_video_input,
-            driving_video_input,
+            action_selection,
             flag_relative_input,
             flag_do_crop_input,
             flag_remap_input,
