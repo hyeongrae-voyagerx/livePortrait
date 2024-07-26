@@ -107,11 +107,10 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                         source_image_input = gr.Image(type="filepath")
                         gr.Examples(
                             examples=[
+                                [osp.join(example_portrait_dir, "s7.jpg")],
                                 [osp.join(example_portrait_dir, "s6.jpg")],
-                                [osp.join(example_portrait_dir, "s10.jpg")],
-                                [osp.join(example_portrait_dir, "s5.jpg")],
-                                [osp.join(example_portrait_dir, "s12.jpg")],
                                 [osp.join(example_portrait_dir, "s22.jpg")],
+                                [osp.join(example_portrait_dir, "s12.jpg")],
                                 [osp.join(example_portrait_dir, "s23.jpg")],
                             ],
                             inputs=[source_image_input],
@@ -149,8 +148,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                     choices=[
                         ("미소", osp.join(example_video_dir, "smile.webm")),
                         ("당황", osp.join(example_video_dir, "surprised.webm")),
-                        ("끄덕끄덕", osp.join(example_video_dir, "gdgd.webm")),
-                        ("절레절레", osp.join(example_video_dir, "nopeshaking.webm"))],
+                        ("끄덕끄덕", osp.join(example_video_dir, "gdgd.webm"))],
                     label="Select Emotion"
                 )
 
@@ -234,5 +232,5 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
 demo.launch(
     server_port=args.server_port,
     share=args.share,
-    server_name=args.server_name
+    server_name="0.0.0.0",
 )
