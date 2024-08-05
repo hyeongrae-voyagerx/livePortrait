@@ -400,6 +400,61 @@ class LivePortraitPipeline(object):
 
     def execute_timefn(self, args: ArgumentConfig):
         time = np.arange(100) / 100
-        pitch_seq = np.sin(time)
-        yaw_seq = np.sin(time)
-        roll_seq = np.sin(time)
+        pitch_seq = (7*np.sin(time)).astype(int)
+        yaw_seq = (12*np.sin(time)).astype(int)
+        roll_seq = (7*np.sin(time)).astype(int)
+
+        frames = []
+        for p, y, r in zip(pitch_seq, yaw_seq, roll_seq):
+            _, frame = self.execute_image(
+                input_eye_ratio=0.5,
+                input_lip_ratio=0.1,
+                input_head_pitch_variation=p,
+                input_head_yaw_variation=y,
+                input_head_roll_variation=r,
+                input_image=args.source,
+                retargeting_source_scale=
+                flag_do_crop=True
+            )
+            frames.append(frame)
+
+
+    @torch.no_grad()
+    def execute_image(self, input_eye_ratio: float, input_lip_ratio: float, input_head_pitch_variation: float, input_head_yaw_variation: float, input_head_roll_variation: float, input_image, retargeting_source_scale: float, flag_do_crop=True):
+        """ for single image retargeting
+        """
+        if input_head_pitch_variation is None or input_head_yaw_variation is None or input_head_roll_variation is None:
+            raise gr.Error("Invalid relative pose input 💥!", duration=5)
+        # disposable feature
+        f_s_user, x_s_user, R_s_user, R_d_user, x_s_info, source_lmk_user, crop_M_c2o, mask_ori, img_rgb = \
+            self.prepare_retargeting(input_image, input_head_pitch_variation, input_head_yaw_variation, input_head_roll_variation, retargeting_source_scale, flag_do_crop)
+        if input_eye_ratio is None or input_lip_ratio is None:
+            raise gr.Error("Invalid ratio input 💥!", duration=5)
+        else:
+            device = self.live_portrait_wrapper.device
+            # inference_cfg = self.live_portrait_wrapper.inference_cfg
+            x_s_user = x_s_user.to(device)
+            f_s_user = f_s_user.to(device)
+            R_s_user = R_s_user.to(device)
+            R_d_user = R_d_user.to(device)
+
+            x_c_s = x_s_info['kp'].to(device)
+            delta_new = x_s_info['exp'].to(device)
+            scale_new = x_s_info['scale'].to(device)
+            t_new = x_s_info['t'].to(device)
+            R_d_new = (R_d_user @ R_s_user.permute(0, 2, 1)) @ R_s_user
+
+            x_d_new = scale_new * (x_c_s @ R_d_new + delta_new) + t_new
+            # ∆_eyes,i = R_eyes(x_s; c_s,eyes, c_d,eyes,i)
+            combined_eye_ratio_tensor = self.live_portrait_wrapper.calc_combined_eye_ratio([[float(input_eye_ratio)]], source_lmk_user)
+            eyes_delta = self.live_portrait_wrapper.retarget_eye(x_s_user, combined_eye_ratio_tensor)
+            # ∆_lip,i = R_lip(x_s; c_s,lip, c_d,lip,i)
+            combined_lip_ratio_tensor = self.live_portrait_wrapper.calc_combined_lip_ratio([[float(input_lip_ratio)]], source_lmk_user)
+            lip_delta = self.live_portrait_wrapper.retarget_lip(x_s_user, combined_lip_ratio_tensor)
+            x_d_new = x_d_new + eyes_delta + lip_delta
+            x_d_new = self.live_portrait_wrapper.stitching(x_s_user, x_d_new)
+            # D(W(f_s; x_s, x′_d))
+            out = self.live_portrait_wrapper.warp_decode(f_s_user, x_s_user, x_d_new)
+            out = self.live_portrait_wrapper.parse_output(out['out'])[0]
+            out_to_ori_blend = paste_back(out, crop_M_c2o, img_rgb, mask_ori)
+            return out, out_to_ori_blend
