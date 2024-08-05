@@ -399,5 +399,7 @@ class LivePortraitPipeline(object):
         return wfp, wfp_concat
 
     def execute_timefn(self, args: ArgumentConfig):
-
-        pass
+        time = np.arange(100) / 100
+        pitch_seq = np.sin(time)
+        yaw_seq = np.sin(time)
+        roll_seq = np.sin(time)
