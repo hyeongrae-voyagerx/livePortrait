@@ -397,3 +397,7 @@ class LivePortraitPipeline(object):
         log(f'Animated video with concat: {wfp_concat}')
 
         return wfp, wfp_concat
+
+    def execute_timefn(self, args: ArgumentConfig):
+
+        pass
