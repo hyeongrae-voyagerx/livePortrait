@@ -12,8 +12,10 @@ def calculate_distance_ratio(lmk: np.ndarray, idx1: int, idx2: int, idx3: int, i
 
 
 def calc_eye_close_ratio(lmk: np.ndarray, target_eye_ratio: np.ndarray = None) -> np.ndarray:
-    lefteye_close_ratio = calculate_distance_ratio(lmk, 6, 18, 0, 12)
-    righteye_close_ratio = calculate_distance_ratio(lmk, 30, 42, 24, 36)
+    lefteye_close_ratio = calculate_distance_ratio(lmk, 6, 18, 0, 12) # pt203 version
+    righteye_close_ratio = calculate_distance_ratio(lmk, 30, 42, 24, 36) # pt203 version
+    # lefteye_close_ratio = calculate_distance_ratio(lmk, 37, 41, 36, 39) # pt68 version
+    # righteye_close_ratio = calculate_distance_ratio(lmk, 43, 47, 42, 45) # pt68 version
     if target_eye_ratio is not None:
         return np.concatenate([lefteye_close_ratio, righteye_close_ratio, target_eye_ratio], axis=1)
     else:
@@ -21,4 +23,5 @@ def calc_eye_close_ratio(lmk: np.ndarray, target_eye_ratio: np.ndarray = None) -
 
 
 def calc_lip_close_ratio(lmk: np.ndarray) -> np.ndarray:
-    return calculate_distance_ratio(lmk, 90, 102, 48, 66)
+    return calculate_distance_ratio(lmk, 90, 102, 48, 66) # pt203 version
+    # return calculate_distance_ratio(lmk, 62, 66, 48, 54) # pt68 version
