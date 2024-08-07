@@ -27,6 +27,8 @@ from .utils.rprint import rlog as log
 # from .utils.viz import viz_lmk
 from .live_portrait_wrapper import LivePortraitWrapper
 
+from .utils.io import load_img_online
+from .utils.retargeting_utils import calc_eye_close_ratio, calc_lip_close_ratio
 
 def make_abs_path(fn):
     return osp.join(osp.dirname(osp.realpath(__file__)), fn)
@@ -398,36 +400,43 @@ class LivePortraitPipeline(object):
 
         return wfp, wfp_concat
 
-    def execute_timefn(self, args: ArgumentConfig):
-        time = np.arange(100) / 100
-        pitch_seq = (7*np.sin(time)).astype(int)
-        yaw_seq = (12*np.sin(time)).astype(int)
-        roll_seq = (7*np.sin(time)).astype(int)
+    def execute_timefn(self, filepath, seconds=5):
+        eye, _ = self.init_retargeting2(0.0, filepath)
+        time = np.arange(seconds*25) / 20
+        pitch_seq = (2.3*np.sin(time*2.7)+ 0.77*np.sin(time*8)).astype(float)
+        yaw_seq = (1.9*np.sin(time*2) + 0.87*np.sin(time*6)).astype(float)
+        roll_seq = (2*np.sin(time*1.9) + 0.67*np.sin(time*9)).astype(float)
+        mouth_seq = (0.1*np.sin(time*11) + 0.031*np.sin(time*15)+0.01*np.sin(time*30)+0.171).astype(float)
 
+        log(f"Load source image from {filepath}.")
         frames = []
-        for p, y, r in zip(pitch_seq, yaw_seq, roll_seq):
-            _, frame = self.execute_image(
-                input_eye_ratio=0.5,
-                input_lip_ratio=0.1,
+        for p, y, r, m in zip(pitch_seq, yaw_seq, roll_seq, mouth_seq):
+            _, frame = self.execute_image2(
+                input_eye_ratio=eye,
+                input_lip_ratio=m,
                 input_head_pitch_variation=p,
                 input_head_yaw_variation=y,
                 input_head_roll_variation=r,
-                input_image=args.source,
-                retargeting_source_scale=
+                input_image=filepath,
+                retargeting_source_scale=1.0,
                 flag_do_crop=True
             )
             frames.append(frame)
+        extension = "." +filepath.split(".")[-1]
+        output = osp.join("animations", f"blahblah_{int(seconds)}_" + osp.basename(filepath).replace(extension, ".mp4"))
+        images2video(frames, output, fps=25)
+        return output
 
 
     @torch.no_grad()
-    def execute_image(self, input_eye_ratio: float, input_lip_ratio: float, input_head_pitch_variation: float, input_head_yaw_variation: float, input_head_roll_variation: float, input_image, retargeting_source_scale: float, flag_do_crop=True):
+    def execute_image2(self, input_eye_ratio: float, input_lip_ratio: float, input_head_pitch_variation: float, input_head_yaw_variation: float, input_head_roll_variation: float, input_image, retargeting_source_scale: float, flag_do_crop=True):
         """ for single image retargeting
         """
         if input_head_pitch_variation is None or input_head_yaw_variation is None or input_head_roll_variation is None:
             raise gr.Error("Invalid relative pose input 💥!", duration=5)
         # disposable feature
         f_s_user, x_s_user, R_s_user, R_d_user, x_s_info, source_lmk_user, crop_M_c2o, mask_ori, img_rgb = \
-            self.prepare_retargeting(input_image, input_head_pitch_variation, input_head_yaw_variation, input_head_roll_variation, retargeting_source_scale, flag_do_crop)
+            self.prepare_retargeting2(input_image, input_head_pitch_variation, input_head_yaw_variation, input_head_roll_variation, retargeting_source_scale, flag_do_crop)
         if input_eye_ratio is None or input_lip_ratio is None:
             raise gr.Error("Invalid ratio input 💥!", duration=5)
         else:
@@ -458,3 +467,54 @@ class LivePortraitPipeline(object):
             out = self.live_portrait_wrapper.parse_output(out['out'])[0]
             out_to_ori_blend = paste_back(out, crop_M_c2o, img_rgb, mask_ori)
             return out, out_to_ori_blend
+
+    @torch.no_grad()
+    def prepare_retargeting2(self, input_image, input_head_pitch_variation, input_head_yaw_variation, input_head_roll_variation, retargeting_source_scale, flag_do_crop=True):
+        """ for single image retargeting
+        """
+        if input_image is not None:
+            # gr.Info("Upload successfully!", duration=2)
+            args_user = {'scale': retargeting_source_scale}
+            # self.args = update_args(self.args, args_user)
+            # self.cropper.update_config(self.args.__dict__)
+            inference_cfg = self.live_portrait_wrapper.inference_cfg
+            ######## process source portrait ########
+            img_rgb = load_img_online(input_image, mode='rgb', max_dim=1280, n=2)
+            crop_info = self.cropper.crop_source_image(img_rgb, self.cropper.crop_cfg)
+            if flag_do_crop:
+                I_s = self.live_portrait_wrapper.prepare_source(crop_info['img_crop_256x256'])
+            else:
+                I_s = self.live_portrait_wrapper.prepare_source(img_rgb)
+            x_s_info = self.live_portrait_wrapper.get_kp_info(I_s)
+            x_s_info_user_pitch = x_s_info['pitch'] + input_head_pitch_variation
+            x_s_info_user_yaw = x_s_info['yaw'] + input_head_yaw_variation
+            x_s_info_user_roll = x_s_info['roll'] + input_head_roll_variation
+            R_s_user = get_rotation_matrix(x_s_info['pitch'], x_s_info['yaw'], x_s_info['roll'])
+            R_d_user = get_rotation_matrix(x_s_info_user_pitch, x_s_info_user_yaw, x_s_info_user_roll)
+            ############################################
+            f_s_user = self.live_portrait_wrapper.extract_feature_3d(I_s)
+            x_s_user = self.live_portrait_wrapper.transform_keypoint(x_s_info)
+            source_lmk_user = crop_info['lmk_crop']
+            crop_M_c2o = crop_info['M_c2o']
+            mask_ori = prepare_paste_back(inference_cfg.mask_crop, crop_info['M_c2o'], dsize=(img_rgb.shape[1], img_rgb.shape[0]))
+            return f_s_user, x_s_user, R_s_user, R_d_user, x_s_info, source_lmk_user, crop_M_c2o, mask_ori, img_rgb
+        else:
+            # when press the clear button, go here
+            raise ValueError("Please upload a source portrait as the retargeting input 🤗🤗🤗")
+
+
+    def init_retargeting2(self, retargeting_source_scale: float, input_image = None):
+        """ initialize the retargeting slider
+        """
+        if input_image != None:
+            inference_cfg = self.live_portrait_wrapper.inference_cfg
+            ######## process source portrait ########
+            img_rgb = load_img_online(input_image, mode='rgb', max_dim=1280, n=16)
+            log(f"Load source image from {input_image}.")
+            crop_info = self.cropper.crop_source_image(img_rgb, self.cropper.crop_cfg)
+            if crop_info is None:
+                raise ValueError("Source portrait NO face detected")
+            source_eye_ratio = calc_eye_close_ratio(crop_info['lmk_crop'][None])
+            source_lip_ratio = calc_lip_close_ratio(crop_info['lmk_crop'][None])
+            return round(float(source_eye_ratio.mean()), 2), round(source_lip_ratio[0][0], 2)
+        return 0., 0.

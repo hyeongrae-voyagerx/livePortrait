@@ -52,7 +52,12 @@ if args.gradio_temp_dir not in (None, ''):
     os.makedirs(args.gradio_temp_dir, exist_ok=True)
 
 def gpu_wrapped_execute_video(*args, **kwargs):
-    return gradio_pipeline.execute_video(*args, **kwargs)
+    if not isinstance(args[2], int):
+        args = args[:-1]
+        return gradio_pipeline.execute_video(*args, **kwargs)
+    else:
+        output = gradio_pipeline.execute_timefn(args[0], seconds=args[-1])
+        return output, output
 
 
 def gpu_wrapped_execute_image(*args, **kwargs):
@@ -107,11 +112,10 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                         source_image_input = gr.Image(type="filepath")
                         gr.Examples(
                             examples=[
+                                [osp.join(example_portrait_dir, "s9.jpg")],
                                 [osp.join(example_portrait_dir, "s7.jpg")],
-                                [osp.join(example_portrait_dir, "s6.jpg")],
+                                [osp.join(example_portrait_dir, "s10.jpg")],
                                 [osp.join(example_portrait_dir, "s22.jpg")],
-                                [osp.join(example_portrait_dir, "s12.jpg")],
-                                [osp.join(example_portrait_dir, "s23.jpg")],
                             ],
                             inputs=[source_image_input],
                             cache_examples=False,
@@ -144,13 +148,17 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
                     vy_ratio = gr.Number(value=-0.125, label="source crop y", minimum=-0.5, maximum=0.5, step=0.01)
         with gr.Column():
             with gr.Row():
-                action_selection = gr.Radio(
-                    choices=[
-                        ("미소", osp.join(example_video_dir, "smile.webm")),
-                        ("당황", osp.join(example_video_dir, "surprised.webm")),
-                        ("끄덕끄덕", osp.join(example_video_dir, "gdgd.webm"))],
-                    label="Select Emotion"
-                )
+                with gr.Column():
+                    action_selection = gr.Radio(
+                        choices=[
+                            ("미소", osp.join(example_video_dir, "smile.webm")),
+                            ("당황", osp.join(example_video_dir, "surprised.webm")),
+                            ("끄덕끄덕", osp.join(example_video_dir, "gdgd.webm")),
+                            ("어쩌구저쩌구", 10)],
+                        label="Select Emotion"
+                    )
+                with gr.Column():
+                    blahblah_time = gr.Slider(minimum=2, maximum=21, value=5, label="어쩌구저쩌구_초(seconds)")
 
             with gr.Row():
                 process_button_animation = gr.Button("🚀 Animate", variant="primary")
@@ -218,6 +226,7 @@ with gr.Blocks(theme=gr.themes.Soft(font=[gr.themes.GoogleFont("Plus Jakarta San
             vy_ratio_crop_driving_video,
             driving_smooth_observation_variance,
             tab_selection,
+            blahblah_time
         ],
         outputs=[output_video_i2v, output_video_concat_i2v],
         show_progress=True

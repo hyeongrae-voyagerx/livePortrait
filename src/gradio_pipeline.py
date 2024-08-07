@@ -134,7 +134,7 @@ class GradioPipeline(LivePortraitPipeline):
             out = self.live_portrait_wrapper.warp_decode(f_s_user, x_s_user, x_d_new)
             out = self.live_portrait_wrapper.parse_output(out['out'])[0]
             out_to_ori_blend = paste_back(out, crop_M_c2o, img_rgb, mask_ori)
-            gr.Info("Run successfully!", duration=2)
+            # gr.Info("Run successfully!", duration=2)
             return out, out_to_ori_blend
 
     @torch.no_grad()
