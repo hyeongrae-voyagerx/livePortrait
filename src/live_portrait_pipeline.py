@@ -453,13 +453,14 @@ class LivePortraitPipeline(object):
             scale_new = x_s_info['scale'].to(device)
             t_new = x_s_info['t'].to(device)
             R_d_new = (R_d_user @ R_s_user.permute(0, 2, 1)) @ R_s_user
+            delta_new = self.update_delta_new_lip_open(input_lip_ratio, delta_new)
 
             x_d_new = scale_new * (x_c_s @ R_d_new + delta_new) + t_new
             # ∆_eyes,i = R_eyes(x_s; c_s,eyes, c_d,eyes,i)
             combined_eye_ratio_tensor = self.live_portrait_wrapper.calc_combined_eye_ratio([[float(input_eye_ratio)]], source_lmk_user)
             eyes_delta = self.live_portrait_wrapper.retarget_eye(x_s_user, combined_eye_ratio_tensor)
             # ∆_lip,i = R_lip(x_s; c_s,lip, c_d,lip,i)
-            combined_lip_ratio_tensor = self.live_portrait_wrapper.calc_combined_lip_ratio([[float(input_lip_ratio)]], source_lmk_user)
+            combined_lip_ratio_tensor = self.live_portrait_wrapper.calc_combined_lip_ratio([[float(0.01)]], source_lmk_user)
             lip_delta = self.live_portrait_wrapper.retarget_lip(x_s_user, combined_lip_ratio_tensor)
             x_d_new = x_d_new + eyes_delta + lip_delta
             x_d_new = self.live_portrait_wrapper.stitching(x_s_user, x_d_new)
@@ -519,3 +520,11 @@ class LivePortraitPipeline(object):
             source_lip_ratio = calc_lip_close_ratio(crop_info['lmk_crop'][None])
             return round(float(source_eye_ratio.mean()), 2), round(source_lip_ratio[0][0], 2)
         return 0., 0.
+
+    @torch.no_grad()
+    def update_delta_new_lip_open(self, lip_open, delta_new, **kwargs):
+        delta_new[0, 19, 1] += lip_open * 0.001 * 120
+        delta_new[0, 19, 2] += lip_open * 0.0001 * 120
+        delta_new[0, 17, 1] += lip_open * -0.0001 * 120
+
+        return delta_new
