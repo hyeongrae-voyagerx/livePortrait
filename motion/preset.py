@@ -20,7 +20,6 @@ def initialize(
     nodes = initialize_nodes(node_shape, zero_index, off_std)
     edges = initialize_edges(nodes, connection_limit)
     edge_trajs = initialize_edge_trajectories(edges, nodes, sample_per_trajectory)
-    breakpoint()
 
 
 
