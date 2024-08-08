@@ -406,6 +406,7 @@ class LivePortraitPipeline(object):
         pitch_seq = (2.3*np.sin(time*2.7)+ 0.77*np.sin(time*8)).astype(float)
         yaw_seq = (1.9*np.sin(time*2) + 0.87*np.sin(time*6)).astype(float)
         roll_seq = (2*np.sin(time*1.9) + 0.67*np.sin(time*9)).astype(float)
+        #roll_seq = np.zeros_like(yaw_seq)
         mouth_seq = (0.1*np.sin(time*11) + 0.031*np.sin(time*15)+0.01*np.sin(time*30)+0.171).astype(float)
 
         log(f"Load source image from {filepath}.")
