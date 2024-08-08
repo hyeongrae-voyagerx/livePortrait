@@ -30,6 +30,8 @@ from .live_portrait_wrapper import LivePortraitWrapper
 from .utils.io import load_img_online
 from .utils.retargeting_utils import calc_eye_close_ratio, calc_lip_close_ratio
 
+from motion import Trajectory
+
 def make_abs_path(fn):
     return osp.join(osp.dirname(osp.realpath(__file__)), fn)
 
@@ -403,11 +405,18 @@ class LivePortraitPipeline(object):
     def execute_timefn(self, filepath, seconds=5):
         eye, _ = self.init_retargeting2(0.0, filepath)
         time = np.arange(seconds*25) / 20
-        pitch_seq = (2.3*np.sin(time*2.7)+ 0.77*np.sin(time*8)).astype(float)
-        yaw_seq = (1.9*np.sin(time*2) + 0.87*np.sin(time*6)).astype(float)
+        is_speaking = torch.where(torch.linspace(0, 5.3, time.shape[0]).sin().abs() < 0.5, 1, 0)
+        t = Trajectory(0)
+        piui = t(is_speaking)
+        piui = t.landmarks[piui]
+        pitch_seq = piui[:, 0].numpy()
+        yaw_seq = piui[:, 1].numpy()
+        mouth_seq = piui[:, 2].numpy()
+        # pitch_seq = (2.3*np.sin(time*2.7)+ 0.77*np.sin(time*8)).astype(float)
+        # yaw_seq = (1.9*np.sin(time*2) + 0.87*np.sin(time*6)).astype(float)
         roll_seq = (2*np.sin(time*1.9) + 0.67*np.sin(time*9)).astype(float)
         #roll_seq = np.zeros_like(yaw_seq)
-        mouth_seq = (0.1*np.sin(time*11) + 0.031*np.sin(time*15)+0.01*np.sin(time*30)+0.171).astype(float)
+        # mouth_seq = (0.1*np.sin(time*11) + 0.031*np.sin(time*15)+0.01*np.sin(time*30)+0.171).astype(float)
 
         log(f"Load source image from {filepath}.")
         frames = []
@@ -425,7 +434,7 @@ class LivePortraitPipeline(object):
             frames.append(frame)
         extension = "." +filepath.split(".")[-1]
         output = osp.join("animations", f"blahblah_{int(seconds)}_" + osp.basename(filepath).replace(extension, ".mp4"))
-        images2video(frames, output, fps=25)
+        images2video(frames, "piui.mp4", fps=25)
         return output
 
 
