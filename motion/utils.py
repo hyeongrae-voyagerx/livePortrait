@@ -3,15 +3,15 @@ from functools import wraps
 import torch
 
 
-def smooth_01(t: torch.Tensor, inflection: float = 10.0) -> float:
+def smooth_01(t: torch.Tensor, inflection: float = 2.0) -> float:
     if isinstance(inflection, (int, float)):
         inflection = torch.tensor([inflection])
     error = torch.sigmoid(-inflection / 2)
     return torch.clamp((torch.sigmoid(inflection * (t - 0.5)) - error) / (1 - 2 * error), 0, 1)
 
-def smooth(x0:float, x1:float, step:int):
+def smooth(x0:float, x1:float, step:int, inflection: float = 2.0):
     t = torch.linspace(0, 1, steps=step)
-    smooth_t = smooth_01(t)
+    smooth_t = smooth_01(t, inflection=inflection)
 
     smooth_result = smooth_t * (x1-x0) + x0
     return smooth_result

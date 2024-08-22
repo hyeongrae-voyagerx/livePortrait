@@ -2,10 +2,12 @@ import torch
 
 from .utils import smooth
 
+
 NODE_SHAPE = (3, 3)
 ZERO_INDEX = (1, 1)
 SAMPLE_PER_TRAJECTORY = 10
 NUM_LANDMARK = 3
+BLAH_CLOSE = (0.04, 0.15)
 
 def get_preset(
     node_shape=NODE_SHAPE,
@@ -19,9 +21,9 @@ def get_preset(
     edges = initialize_edges(nodes, connection_limit)
     edge_trajs = initialize_edge_trajectories(edges, nodes, sample_per_trajectory)
 
-    idx_nodes, idx_edges, motion_landmarks = get_motion_indices(nodes, edges, edge_trajs)
+    node_idx, edge_idx, landmarks = get_motion_indices(nodes, edges, edge_trajs)
 
-    return nodes, edges, idx_nodes, idx_edges, motion_landmarks
+    return {"nodes": nodes, "edges": edges, "node_idx": node_idx, "edge_idx": edge_idx, "landmarks": landmarks}
 
 
 def initialize_nodes(
@@ -32,10 +34,12 @@ def initialize_nodes(
     nodes = []
     for i in range(node_shape[0]):
         for j in range(node_shape[1]):
-            node_ij = torch.tensor([i-zero_index[0], j-zero_index[1]], dtype=torch.float)
+            node_ij = torch.tensor([i-zero_index[0], j-zero_index[1]], dtype=torch.float).clamp(-1, 1)
             node_ij += torch.zeros_like(node_ij).normal_(0, off_std)
             nodes.append(node_ij)
     nodes = torch.stack(nodes)
+    if not speaking:
+        nodes *= 0.7
 
     mean_mouth = 0.27 if speaking else 0.05
     mouth = torch.zeros([len(nodes), 1]).normal_(mean_mouth, 0.04).clamp(min=0.01)
@@ -90,16 +94,37 @@ def get_edges(nodes, connection_limit):
         edges[i, i] = False
     return edges
 
-def initialize_edge_trajectories(edges, nodes, sample_per_trajectory):
+def initialize_edge_trajectories(edges, nodes, sample_per_trajectory, speaking_threshold=0.2):
     edge_trajectory = torch.zeros([*edges.shape, sample_per_trajectory, NUM_LANDMARK])
     for i in range(edges.shape[0]):
         for j in range(i+1, edges.shape[0]):
             if edges[i, j]:
-                traj = torch.cat([smooth(nodes[i][k], nodes[j][k], sample_per_trajectory + 2)[1:-1].unsqueeze(-1) for k in range(NUM_LANDMARK)], -1)
+                traj = torch.cat([smooth(nodes[i][k], nodes[j][k], sample_per_trajectory + 2, inflection=10 if k==2 else 2)[1:-1].unsqueeze(-1) for k in range(NUM_LANDMARK)], -1)
                 # + 2 and trimming both edge because smooth result is closed range
+                if traj[:, -1].mean() > speaking_threshold: # speaking -> add blah
+                    blah = make_blah(traj, sample_per_trajectory)
+                    traj[:, 2][:blah.shape[0]] = blah
+                traj[:, 0] += sin_perturbation(amp=0.17, freq=0.17, num_samples=sample_per_trajectory)
+                traj[:, 1] += sin_perturbation(amp=0.11, freq=0.11, num_samples=sample_per_trajectory)
                 edge_trajectory[i, j] = traj
                 edge_trajectory[j, i] = torch.flip(traj, (0,))
     return edge_trajectory
+
+def make_blah(traj, sample_per_trajectory):
+    close_lip = torch.zeros(1).uniform_(*BLAH_CLOSE).item()
+    close = smooth(traj[:, 2][0].item(), close_lip, sample_per_trajectory//2+1, inflection=8.0)[:-1]
+    open  = smooth(close_lip, traj[:, 2][-1].item(), sample_per_trajectory//2, inflection=8.0)
+    blah = torch.cat([close, open], 0)
+    return blah
+
+def sin_perturbation(amp, freq, num_samples):
+    smoothing = torch.ones(num_samples, dtype=torch.float)
+    smoothing[[0, -1]] = 0
+    smoothing[[1, -2]] = 0.8
+    time = torch.arange(num_samples)
+    signal = amp * torch.sin(freq*time)
+    signal *= smoothing
+    return signal
 
 def get_motion_indices(nodes, edges, edge_trajectories):
     motion_landmarks = [nodes[i] for i in range(len(nodes))]
@@ -138,9 +163,6 @@ def get_motion_indices(nodes, edges, edge_trajectories):
                 assert motion_landmarks[lm_indices_edges[i, j, k]].eq(edge_trajectories[i, j, k]).all()
 
     return lm_indices_nodes, lm_indices_edges, motion_landmarks
-
-
-
 
 if __name__ == "__main__":
     # import numpy as np

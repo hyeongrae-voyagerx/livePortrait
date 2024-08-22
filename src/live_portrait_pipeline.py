@@ -26,11 +26,12 @@ from .utils.filter import smooth
 from .utils.rprint import rlog as log
 # from .utils.viz import viz_lmk
 from .live_portrait_wrapper import LivePortraitWrapper
+import time
 
 from .utils.io import load_img_online
 from .utils.retargeting_utils import calc_eye_close_ratio, calc_lip_close_ratio
 
-from motion import Trajectory
+from motion import Trajectory, AudioProcessor
 
 def make_abs_path(fn):
     return osp.join(osp.dirname(osp.realpath(__file__)), fn)
@@ -402,40 +403,77 @@ class LivePortraitPipeline(object):
 
         return wfp, wfp_concat
 
-    def execute_timefn(self, filepath, seconds=5):
+    def execute_timefn(self, filepath, audio_file):
         eye, _ = self.init_retargeting2(0.0, filepath)
-        time = np.arange(seconds*25) / 20
-        is_speaking = torch.where(torch.linspace(0, 5.3, time.shape[0]).sin().abs() < 0.5, 1, 0)
-        t = Trajectory(0)
-        piui = t(is_speaking)
-        piui = t.landmarks[piui]
-        pitch_seq = piui[:, 0].numpy()
-        yaw_seq = piui[:, 1].numpy()
-        mouth_seq = piui[:, 2].numpy()
-        # pitch_seq = (2.3*np.sin(time*2.7)+ 0.77*np.sin(time*8)).astype(float)
-        # yaw_seq = (1.9*np.sin(time*2) + 0.87*np.sin(time*6)).astype(float)
-        roll_seq = (2*np.sin(time*1.9) + 0.67*np.sin(time*9)).astype(float)
-        #roll_seq = np.zeros_like(yaw_seq)
-        # mouth_seq = (0.1*np.sin(time*11) + 0.031*np.sin(time*15)+0.01*np.sin(time*30)+0.171).astype(float)
+        # time = np.arange(seconds*25) / 20
+        a = AudioProcessor()
+        # audio_path = "lpsample.wav"
+        is_speaking = a(audio_file)
+        # t = Trajectory(0)
+        is_speaking = torch.nn.functional.pad(is_speaking, (0, 13), mode="constant", value=is_speaking[-1])[13:]
+        # piui = t(is_speaking)
+        # piui = t.graph["landmarks"][piui]
+        # frames = []
+        # for i, (p, y, m) in enumerate(t.graph["landmarks"]):
+        #     _, frame = self.execute_image2(
+        #         input_eye_ratio=eye,
+        #         input_lip_ratio=m,
+        #         input_head_pitch_variation=p,
+        #         input_head_yaw_variation=y,
+        #         input_head_roll_variation=0,
+        #         input_image=filepath,
+        #         retargeting_source_scale=1.0,
+        #         flag_do_crop=True
+        #     )
+        #     frames.append(frame)
+        #     print(f"\r{i}", end="")
+        # torch.save({"frames": frames, "trajectory": t}, f"preset/hobbes/frames.pkl")
 
-        log(f"Load source image from {filepath}.")
-        frames = []
-        for p, y, r, m in zip(pitch_seq, yaw_seq, roll_seq, mouth_seq):
-            _, frame = self.execute_image2(
-                input_eye_ratio=eye,
-                input_lip_ratio=m,
-                input_head_pitch_variation=p,
-                input_head_yaw_variation=y,
-                input_head_roll_variation=r,
-                input_image=filepath,
-                retargeting_source_scale=1.0,
-                flag_do_crop=True
-            )
-            frames.append(frame)
-        extension = "." +filepath.split(".")[-1]
-        output = osp.join("animations", f"blahblah_{int(seconds)}_" + osp.basename(filepath).replace(extension, ".mp4"))
-        images2video(frames, "piui.mp4", fps=25)
-        return output
+        # legacy ai my character
+        # preset = torch.load(f"preset/hobbes/frames.pkl")
+        # t = preset["trajectory"]
+        # frames = np.stack(preset["frames"])
+        # for i, f in enumerate(frames):
+        #     cv2.imwrite(f"preset/hobbes_webp/frame_{i}.webp", f, [int(cv2.IMWRITE_WEBP_QUALITY), 20])
+        # trajectory = t(is_speaking)
+        # target_frames = frames[trajectory]
+        output_wo_audio = osp.join("animations", f"{osp.basename(audio_file).split('.')[0]}_mute.mp4")
+        # images2video(target_frames, output_wo_audio, fps=25)
+        # / legacy ai my character
+        t2 = torch.load(f"preset/hobbes/traj.pkl")
+        trajectory2 = t2(is_speaking)
+        target_frames2 = [cv2.imread("preset/hobbes_webp/frame_{}.webp".format(f)) for f in trajectory2]
+        images2video(target_frames2, output_wo_audio, fps=25)
+
+        # pitch_seq = piui[:, 0].numpy()
+        # yaw_seq = piui[:, 1].numpy()
+        # mouth_seq = piui[:, 2].numpy()
+        # # pitch_seq = (2.3*np.sin(time*2.7)+ 0.77*np.sin(time*8)).astype(float)
+        # # yaw_seq = (1.9*np.sin(time*2) + 0.87*np.sin(time*6)).astype(float)
+        # #roll_seq = (2*np.sin(time*1.9) + 0.67*np.sin(time*9)).astype(float)
+        # roll_seq = np.zeros_like(yaw_seq)
+        # # mouth_seq = (0.1*np.sin(time*11) + 0.031*np.sin(time*15)+0.01*np.sin(time*30)+0.171).astype(float)
+
+        # log(f"Load source image from {filepath}.")
+        # frames = []
+        # for p, y, r, m in zip(pitch_seq, yaw_seq, roll_seq, mouth_seq):
+        #     _, frame = self.execute_image2(
+        #         input_eye_ratio=eye,
+        #         input_lip_ratio=m,
+        #         input_head_pitch_variation=p,
+        #         input_head_yaw_variation=y,
+        #         input_head_roll_variation=r,
+        #         input_image=filepath,
+        #         retargeting_source_scale=1.0,
+        #         flag_do_crop=True
+        #     )
+        #     frames.append(frame)
+        # extension = "." +filepath.split(".")[-1]
+        # output = osp.join("animations", f"blahblah_{int(seconds)}_" + osp.basename(filepath).replace(extension, ".mp4"))
+        # images2video(frames, "piui.mp4", fps=25)
+        output_w_audio = output_wo_audio.replace("mute", "audio")
+        os.system(f"ffmpeg -y -i {output_wo_audio} -i {audio_file} -c:v copy -c:a libmp3lame -strict experimental -map 0:v:0 -map 1:a:0 {output_w_audio}")
+        return output_w_audio
 
 
     @torch.no_grad()
