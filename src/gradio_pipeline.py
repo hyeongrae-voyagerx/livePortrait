@@ -190,3 +190,23 @@ class GradioPipeline(LivePortraitPipeline):
             source_lip_ratio = calc_lip_close_ratio(crop_info['lmk_crop'][None])
             return round(float(source_eye_ratio.mean()), 2), round(source_lip_ratio[0][0], 2)
         return 0., 0.
+
+    @torch.no_grad()
+    def update_delta_new_eyeball_direction(self, eyeball_direction_x, eyeball_direction_y, delta_new, **kwargs):
+        if eyeball_direction_x > 0:
+                delta_new[0, 11, 0] += eyeball_direction_x * 0.0007
+                delta_new[0, 15, 0] += eyeball_direction_x * 0.001
+        else:
+            delta_new[0, 11, 0] += eyeball_direction_x * 0.001
+            delta_new[0, 15, 0] += eyeball_direction_x * 0.0007
+
+        delta_new[0, 11, 1] += eyeball_direction_y * -0.001
+        delta_new[0, 15, 1] += eyeball_direction_y * -0.001
+        blink = -eyeball_direction_y / 2.
+
+        delta_new[0, 11, 1] += blink * -0.001
+        delta_new[0, 13, 1] += blink * 0.0003
+        delta_new[0, 15, 1] += blink * -0.001
+        delta_new[0, 16, 1] += blink * 0.0003
+
+        return delta_new
