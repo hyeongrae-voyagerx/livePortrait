@@ -109,6 +109,8 @@ class GradioPipeline(LivePortraitPipeline):
             raise gr.Error("Invalid ratio input 💥!", duration=5)
         else:
             device = self.live_portrait_wrapper.device
+            eyeball_direction_x = torch.tensor(eyeball_direction_x).to(device)
+            eyeball_direction_y = torch.tensor(eyeball_direction_y).to(device)
             # inference_cfg = self.live_portrait_wrapper.inference_cfg
             x_s_user = x_s_user.to(device)
             f_s_user = f_s_user.to(device)
@@ -120,6 +122,9 @@ class GradioPipeline(LivePortraitPipeline):
             scale_new = x_s_info['scale'].to(device)
             t_new = x_s_info['t'].to(device)
             R_d_new = (R_d_user @ R_s_user.permute(0, 2, 1)) @ R_s_user
+
+            if eyeball_direction_x != 0 or eyeball_direction_y != 0:
+                delta_new = self.update_delta_new_eyeball_direction(eyeball_direction_x, eyeball_direction_y, delta_new)
 
             x_d_new = scale_new * (x_c_s @ R_d_new + delta_new) + t_new
             # ∆_eyes,i = R_eyes(x_s; c_s,eyes, c_d,eyes,i)
