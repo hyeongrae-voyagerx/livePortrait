@@ -6,18 +6,20 @@ from .utils import smooth
 NODE_SHAPE = (3, 3)
 ZERO_INDEX = (1, 1)
 SAMPLE_PER_TRAJECTORY = 10
-NUM_LANDMARK = 3
+NUM_LANDMARK = 4
 BLAH_CLOSE = (0.04, 0.15)
+BLINK_PROB = 0.35
 
 def get_preset(
     node_shape=NODE_SHAPE,
     zero_index=ZERO_INDEX,
     off_std=0.2,
+    init_eye=0.35,
     connection_limit=1.5, # sqrt(2) + eps
     sample_per_trajectory=SAMPLE_PER_TRAJECTORY,
     speaking=False
 ):
-    nodes = initialize_nodes(node_shape, zero_index, speaking, off_std)
+    nodes = initialize_nodes(node_shape, zero_index, speaking, off_std, init_eye)
     edges = initialize_edges(nodes, connection_limit)
     edge_trajs = initialize_edge_trajectories(edges, nodes, sample_per_trajectory)
 
@@ -30,7 +32,8 @@ def initialize_nodes(
     node_shape: "tuple[int, int]",
     zero_index: "tuple[int, int]",
     speaking: bool,
-    off_std: float) -> torch.Tensor:
+    off_std: float,
+    init_eye: float) -> torch.Tensor:
     nodes = []
     for i in range(node_shape[0]):
         for j in range(node_shape[1]):
@@ -43,7 +46,8 @@ def initialize_nodes(
 
     mean_mouth = 0.27 if speaking else 0.05
     mouth = torch.zeros([len(nodes), 1]).normal_(mean_mouth, 0.04).clamp(min=0.01)
-    nodes = torch.cat((nodes, mouth), 1)
+    eye = torch.zeros([len(nodes), 1]).normal_(init_eye, 0.005).clamp(min=0.01)
+    nodes = torch.cat((nodes, mouth, eye), 1)
 
     return nodes
 
@@ -52,7 +56,7 @@ def initialize_edges(nodes, connection_limit, num_trial=100):
     while invalid_edges(edges:=get_edges(nodes, connection_limit)):
         i+=1
         if i >= num_trial:
-            raise ValueError("there are separate subgraphs or no-edge nodes. Larger connection_limit needed")
+            raise ValueError("Failed to generate complete graph. Larger connection_limit needed")
     return edges
 
 def invalid_edges(edges):
@@ -86,7 +90,7 @@ def get_edges(nodes, connection_limit):
     distances = torch.zeros((len(nodes), len(nodes)))
     for i in range(len(nodes)):
         for j in range(i+1, len(nodes)):
-            dist_ij = torch.linalg.norm(nodes[i]-nodes[j], 2)
+            dist_ij = torch.linalg.norm(nodes[i, :2]-nodes[j, :2], 2)
             distances[i, j] = dist_ij
             distances[j, i] = dist_ij
     edges = distances.lt(connection_limit)
@@ -104,6 +108,9 @@ def initialize_edge_trajectories(edges, nodes, sample_per_trajectory, speaking_t
                 if traj[:, -1].mean() > speaking_threshold: # speaking -> add blah
                     blah = make_blah(traj, sample_per_trajectory)
                     traj[:, 2][:blah.shape[0]] = blah
+                if _uniform_num() < BLINK_PROB:
+                    traj[1, 3] = traj[0, 3] / 6
+                    traj[2, 3] = traj[3, 3] / 2 # I don't like constant indexing, TODO: fix to use variable
                 traj[:, 0] += sin_perturbation(amp=0.17, freq=0.17, num_samples=sample_per_trajectory)
                 traj[:, 1] += sin_perturbation(amp=0.11, freq=0.11, num_samples=sample_per_trajectory)
                 edge_trajectory[i, j] = traj
@@ -116,6 +123,9 @@ def make_blah(traj, sample_per_trajectory):
     open  = smooth(close_lip, traj[:, 2][-1].item(), sample_per_trajectory//2, inflection=8.0)
     blah = torch.cat([close, open], 0)
     return blah
+
+def _uniform_num():
+    return torch.rand(1).item()
 
 def sin_perturbation(amp, freq, num_samples):
     smoothing = torch.ones(num_samples, dtype=torch.float)

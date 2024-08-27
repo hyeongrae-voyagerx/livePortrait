@@ -13,8 +13,8 @@ class Trajectory:
         self.speaking_change_check = speaking_change_check
         self.fps = fps
 
-        self.speaking_graph = get_preset(speaking=True)
-        self.non_speaking_graph = get_preset(speaking=False)
+        self.speaking_graph = get_preset(init_eye=init_eye, speaking=True)
+        self.non_speaking_graph = get_preset(init_eye=init_eye, speaking=False)
 
         self.merge_graphs()
 

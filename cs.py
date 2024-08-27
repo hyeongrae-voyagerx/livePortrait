@@ -8,7 +8,7 @@ def main():
     inference_cfg = InferenceConfig()
     crop_cfg = CropConfig()
     model = LivePortraitCharacter(inference_cfg=inference_cfg, crop_cfg=crop_cfg)
-    model.generate_face_images("assets/examples/source/hobbes.jpg")
+    model.generate_face_images("assets/examples/source/hobbes.jpg", do_test=True)
 
 if __name__ == "__main__":
     main()

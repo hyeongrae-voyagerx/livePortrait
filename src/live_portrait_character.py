@@ -36,15 +36,16 @@ class LivePortraitCharacter:
         self.live_portrait_wrapper: LivePortraitWrapper = LivePortraitWrapper(inference_cfg=inference_cfg)
         self.cropper: Cropper = Cropper(crop_cfg=crop_cfg)
 
-    def generate_face_images(self, input_img_path):
+    def generate_face_images(self, input_img_path, do_test=False):
         eye = self.get_initial_eye(input_img_path)
         trajectory = Trajectory(0, init_eye=eye)
         landmarks = trajectory.graph["landmarks"]
-        breakpoint()
         frames = []
-        for i, (p, y, m) in enumerate(t.graph["landmarks"]):
+        from time import time
+        s = time()
+        for i, (p, y, m, e) in enumerate(landmarks):
             _, frame = self.execute_image2(
-                input_eye_ratio=eye,
+                input_eye_ratio=e,
                 input_lip_ratio=m,
                 input_head_pitch_variation=p,
                 input_head_yaw_variation=y,
@@ -54,8 +55,19 @@ class LivePortraitCharacter:
                 flag_do_crop=True
             )
             frames.append(frame)
-            print(f"\r{i}", end="")
+            cv2.imwrite(f"preset/test_webp/frame_{i}.webp", frame, [int(cv2.IMWRITE_WEBP_QUALITY), 20])
+            print(f"\r{i} / {len(landmarks)}", end="")
         torch.save(trajectory, f"preset/test_webp/trajectory.pkl")
+        print(f"| elapsed time for generating source images: {time()-s:.2f}")
+        if do_test:
+            print("start test")
+            a = AudioProcessor()
+            is_speaking = a("english.wav")
+            is_speaking = torch.nn.functional.pad(is_speaking, (0, 13), mode="constant", value=is_speaking[-1])[13:]
+            traj = trajectory(is_speaking)
+            target_frames2 = [cv2.imread("preset/test_webp/frame_{}.webp".format(f)) for f in traj]
+            images2video(target_frames2, "test.mp4", fps=25)
+            os.system(f"ffmpeg -y -i test.mp4 -i english.wav -c:v copy -c:a libmp3lame -strict experimental -map 0:v:0 -map 1:a:0 test_audio.mp4")
 
         # legacy ai my character
         # preset = torch.load(f"preset/hobbes/frames.pkl")
