@@ -8,7 +8,7 @@ SPEAKING_CHANGE_CHECK = SAMPLE_PER_TRAJECTORY // 2
 NUM_TRANSFER_SAMPLE = 10
 
 class Trajectory:
-    def __init__(self, start_idx, speaking_change_check=SPEAKING_CHANGE_CHECK, fps=25):
+    def __init__(self, start_idx, init_eye=0.35, speaking_change_check=SPEAKING_CHANGE_CHECK, fps=25):
         self.start_idx = start_idx
         self.speaking_change_check = speaking_change_check
         self.fps = fps
