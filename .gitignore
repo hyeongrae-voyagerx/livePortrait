@@ -5,6 +5,10 @@ __pycache__/
 **/*.py[cod]
 *$py.class
 
+preset/
+*.wav
+*.mp4
+
 # Model weights
 **/*.pth
 **/*.onnx
