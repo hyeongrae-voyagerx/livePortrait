@@ -8,7 +8,7 @@ ZERO_INDEX = (1, 1)
 SAMPLE_PER_TRAJECTORY = 10
 NUM_LANDMARK = 4
 BLAH_CLOSE = (0.04, 0.15)
-BLINK_PROB = 0.35
+BLINK_EVERY = 10 # 10%
 
 def get_preset(
     node_shape=NODE_SHAPE,
@@ -100,6 +100,7 @@ def get_edges(nodes, connection_limit):
 
 def initialize_edge_trajectories(edges, nodes, sample_per_trajectory, speaking_threshold=0.2):
     edge_trajectory = torch.zeros([*edges.shape, sample_per_trajectory, NUM_LANDMARK])
+    blink_idx = 0
     for i in range(edges.shape[0]):
         for j in range(i+1, edges.shape[0]):
             if edges[i, j]:
@@ -108,13 +109,14 @@ def initialize_edge_trajectories(edges, nodes, sample_per_trajectory, speaking_t
                 if traj[:, -1].mean() > speaking_threshold: # speaking -> add blah
                     blah = make_blah(traj, sample_per_trajectory)
                     traj[:, 2][:blah.shape[0]] = blah
-                if _uniform_num() < BLINK_PROB:
-                    traj[1, 3] = traj[0, 3] / 6
-                    traj[2, 3] = traj[3, 3] / 2 # I don't like constant indexing, TODO: fix to use variable
                 traj[:, 0] += sin_perturbation(amp=0.17, freq=0.17, num_samples=sample_per_trajectory)
                 traj[:, 1] += sin_perturbation(amp=0.11, freq=0.11, num_samples=sample_per_trajectory)
+                if blink_idx % BLINK_EVERY == 0:
+                    traj[1, 3] = traj[0, 3] / 3
+                    traj[2, 3] = traj[3, 3] / 1.5 # I don't like constant indexing, TODO: fix to use variable
                 edge_trajectory[i, j] = traj
                 edge_trajectory[j, i] = torch.flip(traj, (0,))
+                blink_idx+=1
     return edge_trajectory
 
 def make_blah(traj, sample_per_trajectory):

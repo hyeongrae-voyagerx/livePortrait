@@ -62,12 +62,12 @@ class LivePortraitCharacter:
         if do_test:
             print("start test")
             a = AudioProcessor()
-            is_speaking = a("english.wav")
+            is_speaking = a("korean.wav")
             is_speaking = torch.nn.functional.pad(is_speaking, (0, 13), mode="constant", value=is_speaking[-1])[13:]
             traj = trajectory(is_speaking)
             target_frames2 = [cv2.imread("preset/test_webp/frame_{}.webp".format(f)) for f in traj]
             images2video(target_frames2, "test.mp4", fps=25)
-            os.system(f"ffmpeg -y -i test.mp4 -i english.wav -c:v copy -c:a libmp3lame -strict experimental -map 0:v:0 -map 1:a:0 test_audio.mp4")
+            os.system(f"ffmpeg -y -i test.mp4 -i korean.wav -c:v copy -c:a libmp3lame -strict experimental -map 0:v:0 -map 1:a:0 test_audio.mp4")
 
         # legacy ai my character
         # preset = torch.load(f"preset/hobbes/frames.pkl")

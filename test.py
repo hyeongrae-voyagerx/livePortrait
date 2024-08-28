@@ -10,7 +10,7 @@ from src.utils.io import load_image_rgb
 args = ArgumentConfig()
 inference_cfg = InferenceConfig()
 crop_cfg = CropConfig()
-
+a *** 3 = 3
 lp = LivePortraitPipeline(inference_cfg=inference_cfg, crop_cfg=crop_cfg)
 img = "assets/examples/source/hobbes.jpg"
 img_rgb = load_image_rgb(img)
@@ -31,3 +31,4 @@ from skimage import io
 lp.execute_timefn(img)
 
 breakpoint()
+import cv2
