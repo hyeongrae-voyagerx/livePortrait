@@ -141,4 +141,3 @@ if __name__ == "__main__":
 
     t = Trajectory(0)
     trajectory = t(is_speaking)
-    breakpoint()

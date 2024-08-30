@@ -180,10 +180,8 @@ if __name__ == "__main__":
     # import numpy as np
     # time = np.arange(5*25) / 20
     # mouth_seq = (0.1*np.sin(time*11) + 0.031*np.sin(time*15)+0.01*np.sin(time*30)+0.171).astype(float)
-    # breakpoint()
+
     preset_non_speaking = get_preset()
     preset_speaking = get_preset(speaking=True)
 
     is_speaking = torch.where(torch.linspace(0, 5, 100).sin().abs() < 0.5, 1, 0)
-
-    breakpoint()

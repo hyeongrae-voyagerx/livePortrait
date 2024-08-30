@@ -45,4 +45,3 @@ class AudioProcessor:
 if __name__ == "__main__":
     a = AudioProcessor()
     seq = a("en_example.wav")
-    breakpoint()
