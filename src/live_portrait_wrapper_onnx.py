@@ -37,27 +37,27 @@ class LivePortraitWrapper(object):
 
         model_config = yaml.load(open(inference_cfg.models_config, 'r'), Loader=yaml.SafeLoader)
         # init F
-        self.appearance_feature_extractor = load_model(inference_cfg.checkpoint_F, model_config, self.device, 'appearance_feature_extractor')
-        # self.appearance_feature_extractor = ort.InferenceSession("pretrained_weights/liveportrait/onnx/appearance_feature_extractor.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
+        # self.appearance_feature_extractor = load_model(inference_cfg.checkpoint_F, model_config, self.device, 'appearance_feature_extractor')
+        self.appearance_feature_extractor = ort.InferenceSession("pretrained_weights/liveportrait/onnx/appearance_feature_extractor.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
         log(f'Load appearance_feature_extractor done.')
         # init M
-        self.motion_extractor = load_model(inference_cfg.checkpoint_M, model_config, self.device, 'motion_extractor')
-        # self.motion_extractor = ort.InferenceSession("pretrained_weights/liveportrait/onnx/motion_extractor.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
+        # self.motion_extractor = load_model(inference_cfg.checkpoint_M, model_config, self.device, 'motion_extractor')
+        self.motion_extractor = ort.InferenceSession("pretrained_weights/liveportrait/onnx/motion_extractor.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
         log(f'Load motion_extractor done.')
         # init W
-        self.warping_module2 = load_model(inference_cfg.checkpoint_W, model_config, self.device, 'warping_module')
-        # self.warping_module = ort.InferenceSession("pretrained_weights/liveportrait/onnx/generator_fix_grid.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
+        # self.warping_module2 = load_model(inference_cfg.checkpoint_W, model_config, self.device, 'warping_module')
+        self.warping_module = ort.InferenceSession("pretrained_weights/liveportrait/onnx/generator_fix_grid.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
         log(f'Load warping_module done.')
         # init G
-        self.spade_generator = load_model(inference_cfg.checkpoint_G, model_config, self.device, 'spade_generator')
+        # self.spade_generator = load_model(inference_cfg.checkpoint_G, model_config, self.device, 'spade_generator')
         # self.spade_generator = ort.InferenceSession("pretrained_weights/liveportrait/onnx/spade_generator.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
         log(f'Load spade_generator done.')
         # init S and R
         if inference_cfg.checkpoint_S is not None and osp.exists(inference_cfg.checkpoint_S):
-            self.stitching_retargeting_module = load_model(inference_cfg.checkpoint_S, model_config, self.device, 'stitching_retargeting_module')
-            # self.stitching_retargeting_eye = ort.InferenceSession("pretrained_weights/liveportrait/onnx/stitching_eye.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
-            # self.stitching_retargeting_lip = ort.InferenceSession("pretrained_weights/liveportrait/onnx/stitching_lip.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
-            # self.stitching_retargeting_module = ort.InferenceSession("pretrained_weights/liveportrait/onnx/stitching.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
+            # self.stitching_retargeting_module = load_model(inference_cfg.checkpoint_S, model_config, self.device, 'stitching_retargeting_module')
+            self.stitching_retargeting_eye = ort.InferenceSession("pretrained_weights/liveportrait/onnx/stitching_eye.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
+            self.stitching_retargeting_lip = ort.InferenceSession("pretrained_weights/liveportrait/onnx/stitching_lip.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
+            self.stitching_retargeting_module = ort.InferenceSession("pretrained_weights/liveportrait/onnx/stitching.onnx", providers = ['CPUExecutionProvider', 'CoreMLExecutionProvider'])
             log(f'Load stitching_retargeting_module done.')
         else:
             self.stitching_retargeting_module = None
@@ -126,9 +126,9 @@ class LivePortraitWrapper(object):
         x: Bx3xHxW, normalized to 0~1
         """
         with torch.no_grad(), self.inference_ctx():
-            feature_3d = self.appearance_feature_extractor(x)
-            # feature_3d = self.appearance_feature_extractor.run(None, {"img": x.cpu().numpy()})[0]
-            # feature_3d = torch.tensor(feature_3d)
+            # feature_3d = self.appearance_feature_extractor(x)
+            feature_3d = self.appearance_feature_extractor.run(None, {"img": x.cpu().numpy()})[0]
+            feature_3d = torch.tensor(feature_3d)
 
         return feature_3d.float()
 
@@ -139,22 +139,22 @@ class LivePortraitWrapper(object):
         return: A dict contains keys: 'pitch', 'yaw', 'roll', 't', 'exp', 'scale', 'kp'
         """
         with torch.no_grad(), self.inference_ctx():
-            kp_info = self.motion_extractor(x)
-            # kp_info = self.motion_extractor.run(None, {"img": x.cpu().numpy()})
-            # kp_info = {
-            #     "pitch": torch.tensor(kp_info[0]),
-            #     "yaw": torch.tensor(kp_info[1]),
-            #     "roll": torch.tensor(kp_info[2]),
-            #     "t": torch.tensor(kp_info[3]),
-            #     "exp": torch.tensor(kp_info[4]),
-            #     "scale": torch.tensor(kp_info[5]),
-            #     "kp": torch.tensor(kp_info[6]),
-            # }
-            if self.inference_cfg.flag_use_half_precision:
-                # float the dict
-                for k, v in kp_info.items():
-                    if isinstance(v, torch.Tensor):
-                        kp_info[k] = v.float()
+            # kp_info = self.motion_extractor(x)
+            kp_info = self.motion_extractor.run(None, {"img": x.cpu().numpy()})
+            kp_info = {
+                "pitch": torch.tensor(kp_info[0]),
+                "yaw": torch.tensor(kp_info[1]),
+                "roll": torch.tensor(kp_info[2]),
+                "t": torch.tensor(kp_info[3]),
+                "exp": torch.tensor(kp_info[4]),
+                "scale": torch.tensor(kp_info[5]),
+                "kp": torch.tensor(kp_info[6]),
+            }
+            # if self.inference_cfg.flag_use_half_precision:
+            #     # float the dict
+            #     for k, v in kp_info.items():
+            #         if isinstance(v, torch.Tensor):
+            #             kp_info[k] = v.float()
 
         flag_refine_info: bool = kwargs.get('flag_refine_info', True)
         if flag_refine_info:
@@ -233,9 +233,9 @@ class LivePortraitWrapper(object):
         feat_eye = concat_feat(kp_source, eye_close_ratio)
 
         with torch.no_grad():
-            delta = self.stitching_retargeting_module['eye'](feat_eye)
-            # delta = self.stitching_retargeting_eye.run(None, {"input": feat_eye.cpu().numpy()})[0]
-            # delta = torch.tensor(delta, device=feat_eye.device)
+            # delta = self.stitching_retargeting_['eye'](feat_eye)
+            delta = self.stitching_retargeting_eye.run(None, {"input": feat_eye.cpu().numpy()})[0]
+            delta = torch.tensor(delta, device=feat_eye.device)
 
         return delta.reshape(-1, kp_source.shape[1], 3)
 
@@ -248,9 +248,9 @@ class LivePortraitWrapper(object):
         feat_lip = concat_feat(kp_source, lip_close_ratio)
 
         with torch.no_grad():
-            delta = self.stitching_retargeting_module['lip'](feat_lip)
-            # delta = self.stitching_retargeting_lip.run(None, {"input": feat_lip.cpu().numpy()})[0]
-            # delta = torch.tensor(delta, device=feat_lip.device)
+            # delta = self.stitching_retargeting_module['lip'](feat_lip)
+            delta = self.stitching_retargeting_lip.run(None, {"input": feat_lip.cpu().numpy()})[0]
+            delta = torch.tensor(delta, device=feat_lip.device)
 
         return delta.reshape(-1, kp_source.shape[1], 3)
 
@@ -263,9 +263,9 @@ class LivePortraitWrapper(object):
         feat_stitching = concat_feat(kp_source, kp_driving)
 
         with torch.no_grad():
-            delta = self.stitching_retargeting_module['stitching'](feat_stitching)
-            # delta = self.stitching_retargeting_module.run(None, {"input": feat_stitching.cpu().numpy()})[0]
-            # delta = torch.tensor(delta, device=feat_stitching.device)
+            # delta = self.stitching_retargeting_module['stitching'](feat_stiching)
+            delta = self.stitching_retargeting_module.run(None, {"input": feat_stitching.cpu().numpy()})[0]
+            delta = torch.tensor(delta, device=feat_stitching.device)
 
         return delta
 
@@ -304,12 +304,12 @@ class LivePortraitWrapper(object):
                 # Mark the beginning of a new CUDA Graph step
                 torch.compiler.cudagraph_mark_step_begin()
             # get decoder input
-            ret_dct = self.warping_module2(feature_3d, kp_source=kp_source, kp_driving=kp_driving)
-            # ret_dct = self.warping_module.run(None, {"feature_3d": feature_3d.cpu().numpy(), "kp_source": kp_source.cpu().numpy(), "kp_driving": kp_driving.cpu().numpy()})[0]
-            # ret_dct = {"out": torch.tensor(ret_dct, device=feature_3d.device)}
+            # ret_dct_ = self.warping_module2(feature_3d, kp_source=kp_source, kp_driving=kp_driving)
+            ret_dct = self.warping_module.run(None, {"feature_3d": feature_3d.cpu().numpy(), "kp_source": kp_source.cpu().numpy(), "kp_driving": kp_driving.cpu().numpy()})[0]
+            ret_dct = {"out": torch.tensor(ret_dct, device=feature_3d.device)}
 
             # decode
-            ret_dct['out'] = self.spade_generator(feature=ret_dct['out'])
+            # ret_dct_['out'] = self.spade_generator(feature=ret_dct_['out'])
 
 
             # float the dict
@@ -317,6 +317,7 @@ class LivePortraitWrapper(object):
                 for k, v in ret_dct.items():
                     if isinstance(v, torch.Tensor):
                         ret_dct[k] = v.float()
+
         return ret_dct
 
     def parse_output(self, out: torch.Tensor) -> np.ndarray:

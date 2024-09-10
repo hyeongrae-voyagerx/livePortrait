@@ -1,4 +1,4 @@
-from src.live_portrait_pipeline import LivePortraitPipeline
+from src.live_portrait_character import LivePortraitCharacter
 
 from src.config.inference_config import InferenceConfig
 from src.config.crop_config import CropConfig
@@ -10,11 +10,12 @@ from src.utils.io import load_image_rgb
 args = ArgumentConfig()
 inference_cfg = InferenceConfig()
 crop_cfg = CropConfig()
-a *** 3 = 3
-lp = LivePortraitPipeline(inference_cfg=inference_cfg, crop_cfg=crop_cfg)
+lp = LivePortraitCharacter(inference_cfg=inference_cfg, crop_cfg=crop_cfg)
 img = "assets/examples/source/hobbes.jpg"
-img_rgb = load_image_rgb(img)
-piui = lp.cropper.crop_source_image(img_rgb, lp.cropper.crop_cfg)
+# img = "piui.webp"
+# img = "s7.jpg"
+# img_rgb = load_image_rgb(img)
+# piui = lp.cropper.crop_source_image(img_rgb, lp.cropper.crop_cfg)
 # lmk = piui["lmk_crop"]
 # lp.live_portrait_wrapper.calc_combined_eye_ratio([[0.2]], lmk)
 # lmk_256 = piui["lmk_crop_256x256"]
@@ -28,7 +29,4 @@ from skimage import io
 
 # preds, pts = fa.get_landmarks(img_rgb)
 
-lp.execute_timefn(img)
-
-breakpoint()
-import cv2
+lp.generate_face_images(img, do_test=True)
