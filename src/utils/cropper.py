@@ -79,7 +79,7 @@ class Cropper(object):
             if hasattr(self.crop_cfg, k):
                 setattr(self.crop_cfg, k, v)
 
-    def crop_source_image(self, img_rgb_: np.ndarray, crop_cfg: CropConfig):
+    def crop_source_image(self, img_rgb_: np.ndarray, crop_cfg: CropConfig, lmk=None):
         # crop a source image and get neccessary information
         img_rgb = img_rgb_.copy()  # copy it
         # img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
@@ -101,13 +101,16 @@ class Cropper(object):
         # lmk = src_face.landmark_2d_106  # this is the 106 landmarks from insightface
         # llmk, lmk2 = self.fa.get_landmarks(img_rgb)
         # lmk = llmk[0]
-        # for i in [43, 47, 42, 45]:
-        #     y, x = lmk[i].astype(int).tolist()
-        #     piui = img_rgb.copy()
+
+        # piui = img_rgb.copy()
+        # for hw in lmk:
+        #     y, x = hw.astype(int).tolist()
         #     piui[x-5:x+5, y-5:y+5] = np.array([255, 0, 0])
-        #     cv2.imwrite(f"file_68_{i}.png", piui)
-        # crop the face
-        lmk = self.landmark_runner.run(img_rgb, None)#lmk)
+        # cv2.imwrite(f"piui.png", piui)
+        # breakpoint()
+        if lmk is None:
+            lmk, _ = self.fa.get_landmarks(img_rgb)
+            lmk = lmk[0]
 
         ret_dct = crop_image(
             img_rgb,  # ndarray
@@ -118,6 +121,7 @@ class Cropper(object):
             vy_ratio=crop_cfg.vy_ratio,
             flag_do_rot=crop_cfg.flag_do_rot,
         )
+        lmk = self.landmark_runner.run(img_rgb, None)
         ret_dct["lmk_crop"] = lmk # it is not lmk_crop! it fits to original img_rgb
 
         # update a 256x256 version for network input

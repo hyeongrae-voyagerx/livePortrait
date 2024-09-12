@@ -95,6 +95,8 @@ class CharacterHandler(LivePortraitCharacter):
         landmarks = trajectory.graph["landmarks"]
         frames = []
         s = time()
+        lmk, _ = self.cropper.fa.get_landmarks(img)
+        lmk = lmk[0]
         if preview:
             preview_clip = self.generate_preview(landmarks, img, uid, eye)
         else:

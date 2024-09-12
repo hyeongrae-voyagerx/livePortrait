@@ -50,11 +50,9 @@ class LivePortraitCharacter:
         landmarks = trajectory.graph["landmarks"]
         frames = []
         s = time()
+        lmk, _ = self.cropper.fa.get_landmarks(input_img_path)
+        lmk = lmk[0]
         for i, (p, y, m, e) in enumerate(landmarks):
-            p = p.repeat(2)[:, None].cuda()
-            y = y.repeat(2)[:, None].cuda()
-            m = m.repeat(2)[:, None].cuda()
-            e = e.repeat(2)[:, None].cuda()
             _, frame = self.execute_image2(
                 input_eye_ratio=e,
                 input_lip_ratio=m,
@@ -62,6 +60,7 @@ class LivePortraitCharacter:
                 input_head_yaw_variation=y,
                 input_head_roll_variation=torch.zeros_like(y),
                 input_image=input_img_path,
+                lmk=lmk,
                 retargeting_source_scale=1.0,
                 flag_do_crop=True
             )
@@ -82,7 +81,7 @@ class LivePortraitCharacter:
 
 
     @torch.no_grad()
-    def execute_image2(self, input_eye_ratio: float, input_lip_ratio: float, input_head_pitch_variation: float, input_head_yaw_variation: float, input_head_roll_variation: float, input_image, retargeting_source_scale: float, flag_do_crop=True):
+    def execute_image2(self, input_eye_ratio: float, input_lip_ratio: float, input_head_pitch_variation: float, input_head_yaw_variation: float, input_head_roll_variation: float, input_image, lmk, retargeting_source_scale: float, flag_do_crop=True):
         """ for single image retargeting
         """
         if input_head_pitch_variation is None or input_head_yaw_variation is None or input_head_roll_variation is None:
@@ -90,7 +89,7 @@ class LivePortraitCharacter:
         # disposable feature
         with time_elapse("prepare_retargeting2"):
             f_s_user, x_s_user, R_s_user, R_d_user, x_s_info, source_lmk_user, crop_M_c2o, mask_ori, img_rgb = \
-                self.prepare_retargeting2(input_image, input_head_pitch_variation, input_head_yaw_variation, input_head_roll_variation, retargeting_source_scale, flag_do_crop)
+                self.prepare_retargeting2(input_image, input_head_pitch_variation, input_head_yaw_variation, input_head_roll_variation, retargeting_source_scale, flag_do_crop, lmk)
 
         if input_eye_ratio is None or input_lip_ratio is None:
             raise gr.Error("Invalid ratio input 💥!", duration=5)
@@ -130,7 +129,7 @@ class LivePortraitCharacter:
             return out, out_to_ori_blend
 
     @torch.no_grad()
-    def prepare_retargeting2(self, input_image, input_head_pitch_variation, input_head_yaw_variation, input_head_roll_variation, retargeting_source_scale, flag_do_crop=True):
+    def prepare_retargeting2(self, input_image, input_head_pitch_variation, input_head_yaw_variation, input_head_roll_variation, retargeting_source_scale, flag_do_crop=True, lmk=None):
         """ for single image retargeting
         """
         if input_image is not None:
@@ -141,7 +140,7 @@ class LivePortraitCharacter:
             inference_cfg = self.live_portrait_wrapper.inference_cfg
             ######## process source portrait ########
             img_rgb = load_img_online(input_image, mode='rgb', max_dim=1280, n=2)
-            crop_info = self.cropper.crop_source_image(img_rgb, self.cropper.crop_cfg)
+            crop_info = self.cropper.crop_source_image(img_rgb, self.cropper.crop_cfg, lmk)
             if flag_do_crop:
                 I_s = self.live_portrait_wrapper.prepare_source(crop_info['img_crop_256x256'])
             else:
@@ -188,7 +187,6 @@ class LivePortraitCharacter:
 
     @torch.no_grad()
     def update_delta_new_lip_open(self, lip_open, delta_new, **kwargs):
-        breakpoint()
         delta_new[0, 19, 1] += lip_open * 0.001 * 120
         delta_new[0, 19, 2] += lip_open * 0.0001 * 120
         delta_new[0, 17, 1] += lip_open * -0.0001 * 120
