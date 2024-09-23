@@ -12,8 +12,9 @@ inference_cfg = InferenceConfig()
 crop_cfg = CropConfig()
 lp = LivePortraitCharacter(inference_cfg=inference_cfg, crop_cfg=crop_cfg)
 img = "assets/examples/source/hobbes.jpg"
+img = "assets/examples/source/s9.jpg"
 # img = "piui.webp"
-# img = "s7.jpg"
+# img = "cu.png"
 # img_rgb = load_image_rgb(img)
 # piui = lp.cropper.crop_source_image(img_rgb, lp.cropper.crop_cfg)
 # lmk = piui["lmk_crop"]
