@@ -48,7 +48,7 @@ class LivePortraitCharacter:
         eye = self.get_initial_eye(input_img_path)
         trajectory = Trajectory(0, init_eye=eye)
         landmarks = trajectory.graph["landmarks"]
-        frames = []
+        # frames = []
         s = time()
         lmk, _ = self.cropper.fa.get_landmarks(input_img_path)
         lmk = lmk[0]
@@ -64,7 +64,7 @@ class LivePortraitCharacter:
                 retargeting_source_scale=1.0,
                 flag_do_crop=True
             )
-            frames.append(frame.tolist())
+            # frames.append(frame.tolist())
             cv2.imwrite(f"preset/test_webp/frame_{i}.webp", frame, [int(cv2.IMWRITE_WEBP_QUALITY), 20])
             print(f"\r{i} / {len(landmarks)}", end="")
         torch.save(trajectory, f"preset/test_webp/trajectory.pkl")

@@ -7,6 +7,7 @@ from .config.crop_config import CropConfig
 from .utils.video import images2video
 import numpy as np
 import cv2
+from .rem_bg.rembg_class import RembgWrapper
 from contextlib import contextmanager
 
 @contextmanager
@@ -81,50 +82,42 @@ serve.start(http_options={"host": "0.0.0.0", "port": 8001})
 class CharacterHandler(LivePortraitCharacter):
     def __init__(self):
         super().__init__(inference_cfg=InferenceConfig(), crop_cfg=CropConfig())
+        self.bg_remover = RembgWrapper()
 
     @serve.batch(max_batch_size=1, batch_wait_timeout_s=1)
     async def __call__(self, request):
         from time import time
         request = request[0]
         json_data = await request.json()
-        img = torch.tensor(json_data["img"]).numpy().astype(np.uint8)
+
+        ###
+        with open("img_temp.jpg", "wb") as fw:
+            fw.write(eval(json_data["img"]))
+        img = cv2.imread("img_temp.jpg")
+        img = self.bg_remover.remove(img)
+        ###
+        # img = torch.tensor(json_data["img"]).numpy().astype(np.uint8)
         eye = self.get_initial_eye(img)
         uid = json_data.get("uid", "temp")
         preview = json_data.get("preview", False)
         trajectory = torch.load("preset/test_webp/trajectory.pkl")
         landmarks = trajectory.graph["landmarks"]
         frames = []
+        print(f"Receive request, start generating {'preview' if preview else 'full-source'}")
         s = time()
         lmk, _ = self.cropper.fa.get_landmarks(img)
         lmk = lmk[0]
         if preview:
-            preview_clip = self.generate_preview(landmarks, img, uid, eye)
+            preview_clip = self.generate_preview(landmarks, img, uid, eye, lmk)
         else:
-            frames = self.generate_full_source(landmarks, img, uid, eye)
-        # for i, (p, y, m, e) in enumerate(landmarks):
-        #     if preview and i not in _preset_motion_unique:
-        #         continue
-        #     _, frame = self.execute_image2(
-        #         input_eye_ratio=e,
-        #         input_lip_ratio=m,
-        #         input_head_pitch_variation=p,
-        #         input_head_yaw_variation=y,
-        #         input_head_roll_variation=0,
-        #         input_image=img,
-        #         retargeting_source_scale=1.0,
-        #         flag_do_crop=True
-        #     )
-        #     # frames.append(frame.tolist())
-        #     with to_cv2(frame, f"tmp/{uid}_{i}.webp") as data:
-        #         frames.append(str(data))
-        #     # cv2.imwrite(f"tmp/{uid}_{i}.webp", frame, [int(cv2.IMWRITE_WEBP_QUALITY), 20])
+            frames = self.generate_full_source(landmarks, img, uid, eye, lmk)
         print({f"{time()-s:.3f}"})
         if preview:
             return [preview_clip]
         else:
             return [frames]
 
-    def generate_preview(self, landmarks, img, uid, eye):
+    def generate_preview(self, landmarks, img, uid, eye, lmk):
         frames = []
         for i, (p, y, m, e) in enumerate(landmarks):
             if i not in _preset_motion_unique:
@@ -138,7 +131,8 @@ class CharacterHandler(LivePortraitCharacter):
                 input_head_roll_variation=0,
                 input_image=img,
                 retargeting_source_scale=1.0,
-                flag_do_crop=True
+                flag_do_crop=True,
+                lmk=lmk
             )
             cv2.imwrite(f"tmp/{uid}_{i}.webp", frame, [int(cv2.IMWRITE_WEBP_QUALITY), 20])
             frames.append(f"tmp/{uid}_{i}.webp")
@@ -150,7 +144,7 @@ class CharacterHandler(LivePortraitCharacter):
             d = str(fr.read())
         return d
 
-    def generate_full_source(self, landmarks, img, uid, eye):
+    def generate_full_source(self, landmarks, img, uid, eye, lmk):
         frames = []
         for i, (p, y, m, e) in enumerate(landmarks):
             _, frame = self.execute_image2(
@@ -161,10 +155,14 @@ class CharacterHandler(LivePortraitCharacter):
                 input_head_roll_variation=0,
                 input_image=img,
                 retargeting_source_scale=1.0,
-                flag_do_crop=True
+                flag_do_crop=True,
+                lmk=lmk
             )
             with to_cv2(frame, f"tmp/{uid}_{i}.webp") as data:
                 frames.append(str(data))
         return frames
 
 character_handler = CharacterHandler.bind()
+
+# ray start --head (unless ray is on)
+#
