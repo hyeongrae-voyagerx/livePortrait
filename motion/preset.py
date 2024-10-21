@@ -44,8 +44,8 @@ def initialize_nodes(
     if not speaking:
         nodes *= 0.7
 
-    mean_mouth = 0.27 if speaking else 0.05
-    mouth = torch.zeros([len(nodes), 1]).normal_(mean_mouth, 0.04).clamp(min=0.01)
+    mean_mouth = 0.27 if speaking else 0.09
+    mouth = torch.zeros([len(nodes), 1]).normal_(mean_mouth, 0.01).clamp(min=0.01)
     eye = torch.zeros([len(nodes), 1]).normal_(init_eye, 0.005).clamp(min=0.01)
     nodes = torch.cat((nodes, mouth, eye), 1)
 

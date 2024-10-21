@@ -30,4 +30,5 @@ from skimage import io
 
 # preds, pts = fa.get_landmarks(img_rgb)
 
-lp.generate_face_images(img, do_test=True)
+# lp.generate_face_images(img, do_test=True)
+lp.gen_preset("char_example.wav")
