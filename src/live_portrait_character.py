@@ -60,7 +60,7 @@ class LivePortraitCharacter:
         landmarks = trajectory.graph["landmarks"]
         # frames = []
         s = time()
-        lmk, _ = self.cropper.fa.get_landmarks(input_img_path)
+        lmk = self.cropper.fa.get_landmarks(input_img_path)
         lmk = lmk[0]
         for i, (p, y, m, e) in enumerate(landmarks):
             _, frame = self.execute_image2(

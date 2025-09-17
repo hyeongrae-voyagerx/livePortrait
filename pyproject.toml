@@ -1,0 +1,30 @@
+[project]
+name = "liveportrait"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "albumentations==1.4.10",
+    "face-alignment>=1.4.1",
+    "ffmpeg-python==0.2.0",
+    "gradio==4.37.1",
+    "imageio==2.34.2",
+    "imageio-ffmpeg==0.5.1",
+    "lmdb==1.4.1",
+    "matplotlib==3.9.0",
+    "numpy==1.26.4",
+    "onnx==1.16.1",
+    "onnxruntime-gpu==1.18.0",
+    "opencv-python==4.10.0.84",
+    "pykalman==0.9.7",
+    "pyyaml==6.0.1",
+    "rich==13.7.1",
+    "scikit-image==0.24.0",
+    "scipy==1.13.1",
+    "torch==2.3.0",
+    "torchaudio==2.3.0",
+    "torchvision==0.18.0",
+    "tqdm==4.66.4",
+    "tyro==0.8.5",
+]

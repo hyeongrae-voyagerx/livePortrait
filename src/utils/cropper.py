@@ -109,7 +109,7 @@ class Cropper(object):
         # cv2.imwrite(f"piui.png", piui)
         # breakpoint()
         if lmk is None:
-            lmk, _ = self.fa.get_landmarks(img_rgb)
+            lmk = self.fa.get_landmarks(img_rgb)
             lmk = lmk[0]
 
         ret_dct = crop_image(
